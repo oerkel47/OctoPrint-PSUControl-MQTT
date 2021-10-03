@@ -2,7 +2,7 @@
 from __future__ import absolute_import
 
 import octoprint.plugin
-import json
+# import json
 
 
 class PSUControl_MQTT(octoprint.plugin.StartupPlugin,
