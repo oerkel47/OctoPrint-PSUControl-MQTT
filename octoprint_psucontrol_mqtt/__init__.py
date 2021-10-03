@@ -2,6 +2,7 @@
 from __future__ import absolute_import
 
 import octoprint.plugin
+import json
 
 
 class PSUControl_MQTT(octoprint.plugin.StartupPlugin,
@@ -21,8 +22,13 @@ class PSUControl_MQTT(octoprint.plugin.StartupPlugin,
         return dict(
             control_topic="",
             state_topic="",
-            on_message="ON",
-            off_message="OFF"
+            on_command="ON",
+            off_command="OFF",
+            query_device_status=False,
+            query_topic="",
+            query_payload="",
+            response_on="ON",
+            response_off="OFF"
         )
 
     def reload_settings(self):
@@ -62,37 +68,47 @@ class PSUControl_MQTT(octoprint.plugin.StartupPlugin,
 
         self.mqtt_subscribe(self.config["state_topic"], self.on_mqtt_subscription)
         self._logger.debug("Subscribing to {}", self.config["state_topic"])
+        if self.config["query_device_status"]:
+            self.mqtt_publish(self.config["query_topic"], self.config["query_payload"])
 
     def turn_psu_on(self):
         self._logger.debug("Switching PSU On")
-        self.mqtt_publish(self.config["control_topic"], self.config["on_message"])
+        self.mqtt_publish(self.config["control_topic"], self.config["on_command"])
 
     def turn_psu_off(self):
         self._logger.debug("Switching PSU Off")
-        self.mqtt_publish(self.config["control_topic"], self.config["off_message"])
+        self.mqtt_publish(self.config["control_topic"], self.config["off_command"])
 
     def on_mqtt_subscription(self, topic, message, retained=None, qos=None, *args, **kwargs):
-        self._logger.info("mqtt: received a message for Topic {topic}. Message: {message}".format(**locals()))
+        self._logger.debug("mqtt: received a message for Topic {topic}. Message: {message}".format(**locals()))
+        self._logger.debug("Valid messages are " + self.config["response_on"] + " and " + self.config["response_off"])
         message = message.decode("utf-8")
+        self._logger.debug("Message in utf-8: {message}".format(**locals()))
+
         if topic == self.config["state_topic"]:
-            if message == self.config["on_message"]:
+            if message == self.config["response_on"]:
+                self._logger.debug("received valid state: on")
                 self.psu_status = True
-            elif message == self.config["off_message"]:
+            elif message == self.config["response_off"]:
                 self.psu_status = False
+                self._logger.debug("received valid state: off")
             else:
-                self._logger.error("unknown psu status, setting to off")
-                self.psu_status = False
+                self._logger.debug("unknown message and thus PSU status, not changing..")
+
 
     def get_psu_state(self):
+        if self.config["query_device_status"]:
+            self._logger.debug("Sending periodic query to get psu state")
+            self.mqtt_publish(self.config["query_topic"], self.config["query_payload"])
         return self.psu_status
 
     def on_settings_save(self, data):
         octoprint.plugin.SettingsPlugin.on_settings_save(self, data)
         self.mqtt_unsubscribe(self.config["state_topic"])
-        self._logger.debug("unsubscribing from {}", self.config["state_topic"])
+        self._logger.debug("unsubscribing from: " + self.config["state_topic"])
         self.reload_settings()
         self.mqtt_subscribe(self.config["state_topic"], self.on_mqtt_subscription)
-        self._logger.debug("Subscribing to {}", self.config["state_topic"])
+        self._logger.debug("subscribing to: " + self.config["state_topic"])
 
     def get_settings_version(self):
         return 1

@@ -1,29 +1,80 @@
 <form class="form-horizontal">
-	<h4>MQTT Settings</h4>
+
+	<h4>Command settings</h4>
+	
 	<div class="accordion-inner">
+	
 		<div class="control-group">
-			<label class="control-label">Switch control topic</label>
+			<label class="control-label">Switch command topic</label>
 			<div class="controls">				
 				<input type="text" class="input-block-level" data-bind="value: settings.plugins.psucontrol_mqtt.control_topic"/>
 			</div>
+		</div>
+		
+		<div class="control-group">
+			<label class="control-label">ON command message</label>
+				<div class="controls">				
+					<input type="text" class="input-block-level" data-bind="value: settings.plugins.psucontrol_mqtt.on_command"/>
+				</div>
+		</div>
+		
+		<div class="control-group">
+			<label class="control-label">OFF command message</label>
+				<div class="controls">				
+					<input type="text" class="input-block-level" data-bind="value: settings.plugins.psucontrol_mqtt.off_command"/>
+				</div>
 		</div>	
+		
+	</div>
+	
+	<h4>Sense settings</h4>	
+	
+	<div class="accordion-inner">
+	
 		<div class="control-group">
 			<label class="control-label">Switch state topic</label>
+				<div class="controls">				
+					<input type="text" class="input-block-level" data-bind="value: settings.plugins.psucontrol_mqtt.state_topic"/>
+				</div>
+		</div>
+		
+		<div class="control-group">
+		<label class="control-label">ON response</label>
 			<div class="controls">				
-				<input type="text" class="input-block-level" data-bind="value: settings.plugins.psucontrol_mqtt.state_topic"/>
+				<input type="text" class="input-block-level" data-bind="value: settings.plugins.psucontrol_mqtt.response_on"/>
 			</div>
-		</div>		
+		</div>
+
 		<div class="control-group">
-			<label class="control-label">ON message</label>
+			<label class="control-label">OFF response</label>
 				<div class="controls">				
-					<input type="text" class="input-block-level" data-bind="value: settings.plugins.psucontrol_mqtt.on_message"/>
+					<input type="text" class="input-block-level" data-bind="value: settings.plugins.psucontrol_mqtt.response_off"/>
 				</div>
-		</div>	
+		</div>
+		
+		<div class="control-group">			
+			<label class="checkbox">
+				<input type="checkbox" data-bind="checked: settings.plugins.psucontrol_mqtt.query_device_status"> <b>actively query for switch state</b>
+			</label>			
+			<span class="help-block">				 
+				If your device expects querying a certain topic to publish its current state to the state topic
+			</span>
+		</div>
+		
 		<div class="control-group">
-			<label class="control-label">OFF message</label>
+			<label class="control-label">query topic</label>
 				<div class="controls">				
-					<input type="text" class="input-block-level" data-bind="value: settings.plugins.psucontrol_mqtt.off_message"/>
+					<input type="text" class="input-block-level" data-bind="value: settings.plugins.psucontrol_mqtt.query_topic"/>
 				</div>
-		</div>			
-	</div>		
+		</div>
+		
+		<div class="control-group">
+			<label class="control-label">query payload</label>
+				<div class="controls">				
+					<input type="text" class="input-block-level" data-bind="value: settings.plugins.psucontrol_mqtt.query_payload"/>
+				</div>
+		</div>
+	
+	</div>
+		
 </form>
