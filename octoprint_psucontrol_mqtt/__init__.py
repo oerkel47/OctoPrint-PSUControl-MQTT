@@ -2,7 +2,7 @@
 from __future__ import absolute_import
 
 import octoprint.plugin
-# import json
+import json
 
 
 class PSUControl_MQTT(octoprint.plugin.StartupPlugin,
@@ -17,6 +17,9 @@ class PSUControl_MQTT(octoprint.plugin.StartupPlugin,
 
         self.config = dict()
         self.psu_status = None
+        self.response_key = None
+        self.response_on = None
+        self.response_off = None
 
     def get_settings_defaults(self):
         return dict(
@@ -41,7 +44,7 @@ class PSUControl_MQTT(octoprint.plugin.StartupPlugin,
                 v = self._settings.get_float([k])
             elif type(v) == bool:
                 v = self._settings.get_boolean([k])
-        
+
             self.config[k] = v
             self._logger.debug("{}: {}".format(k, v))
 
@@ -65,40 +68,91 @@ class PSUControl_MQTT(octoprint.plugin.StartupPlugin,
                 self.mqtt_unsubscribe = mqtt_helpers["mqtt_unsubscribe"]
         else:
             self._logger.info("mqtt helpers not found..plugin won't work")
-
+        self.parse_response_settings()
         self.mqtt_subscribe(self.config["state_topic"], self.on_mqtt_subscription)
-        self._logger.debug("Subscribing to {}", self.config["state_topic"])
+        self._logger.debug("On after startup: subscribing to {}", self.config["state_topic"])
         if self.config["query_device_status"]:
             self.mqtt_publish(self.config["query_topic"], self.config["query_payload"])
 
     def turn_psu_on(self):
-        self._logger.debug("Switching PSU On")
+        self._logger.debug("Switching PSU On: sending command " + self.config["on_command"])
         self.mqtt_publish(self.config["control_topic"], self.config["on_command"])
 
     def turn_psu_off(self):
-        self._logger.debug("Switching PSU Off")
+        self._logger.debug("Switching PSU Off: sending command " + self.config["off_command"])
         self.mqtt_publish(self.config["control_topic"], self.config["off_command"])
 
     def on_mqtt_subscription(self, topic, message, retained=None, qos=None, *args, **kwargs):
-        self._logger.debug("mqtt: received a message for Topic {topic}. Message: {message}".format(**locals()))
-        self._logger.debug("Valid messages are " + self.config["response_on"] + " and " + self.config["response_off"])
-        message = message.decode("utf-8")
-        self._logger.debug("Message in utf-8: {message}".format(**locals()))
-
         if topic == self.config["state_topic"]:
-            if message == self.config["response_on"]:
-                self._logger.debug("received valid state: on")
-                self.psu_status = True
-            elif message == self.config["response_off"]:
-                self.psu_status = False
-                self._logger.debug("received valid state: off")
-            else:
-                self._logger.debug("unknown message and thus PSU status, not changing..")
+            self._logger.debug("received raw message: {message}".format(**locals()))
+            message_parsed = self.parse_message(message)
+            self._logger.debug("parsed incoming message to value " + str(message_parsed))
 
+            if message_parsed.lower() == self.response_on.lower():
+                self._logger.debug("received valid state for ON")
+                self.psu_status = True
+            elif message_parsed.lower() == self.response_off.lower():
+                self.psu_status = False
+                self._logger.info("received valid state for OFF")
+            else:
+                self._logger.debug("Valid messages are " + self.response_on + " and " + self.response_off)
+                self._logger.debug("Received unknown message. Assuming same PSU state as before")
+
+    def parse_response_settings(self):
+        a = 0
+        response_keys = [None, None]
+        try:
+            response_on_dict = json.loads(self.config["response_on"])
+            self.response_on = list(response_on_dict.values())[0]
+            response_keys[0] = list(response_on_dict.keys())[0]
+            a += 1
+        except:
+            self.response_on = self.config["response_on"]
+        try:
+            response_off_dict = json.loads(self.config["response_off"])
+            self.response_off = list(response_off_dict.values())[0]
+            response_keys[1] = list(response_off_dict.keys())[0]
+            a += 1
+        except:
+            self.response_off = self.config["response_off"]
+
+        if a == 2:
+            self.response_key = response_keys[0]
+            if response_keys[0] != response_keys[1]:
+                self._logger.error("Response message settings have different json keys..50/50 chance")
+
+        if a == 1:
+            self._logger.error("Response message settings have mix of json and str..Should still work")
+            for val in response_keys:
+                if val is not None:
+                    self.response_key = val
+
+        if a == 0:  # this is redundant but I like it
+            self.response_key = None
+            self.response_on = self.config["response_on"]
+            self.response_off = self.config["response_off"]
+            # if responses are not json but simple strings
+
+        self._logger.debug("response json key is " + str(self.response_key))
+
+    def parse_message(self, message):
+        message = message.decode("utf-8")
+        try:
+            message_dict = dict(json.loads(message))
+        except:
+            message_parsed = message  # message was no json, keep as is
+            if self.response_key is not None:
+                self._logger.error("Response settings are json but incoming message is not..Should still work")
+        else:
+            message_parsed = message_dict.get(self.response_key)  # message is json, get value we are looking for
+            if self.response_key is None:
+                self._logger.error("Incoming message is json but response settings are not..Fix or this won't work")
+        return message_parsed
 
     def get_psu_state(self):
         if self.config["query_device_status"]:
-            self._logger.debug("Sending periodic query to get psu state")
+            # self._logger.debug("Sending periodic query to get psu state: ")
+            # self._logger.debug(self.config["query_topic"] + " -  " + self.config["query_payload"])
             self.mqtt_publish(self.config["query_topic"], self.config["query_payload"])
         return self.psu_status
 
@@ -109,6 +163,7 @@ class PSUControl_MQTT(octoprint.plugin.StartupPlugin,
         self.reload_settings()
         self.mqtt_subscribe(self.config["state_topic"], self.on_mqtt_subscription)
         self._logger.debug("subscribing to: " + self.config["state_topic"])
+        self.parse_response_settings()
 
     def get_settings_version(self):
         return 1
