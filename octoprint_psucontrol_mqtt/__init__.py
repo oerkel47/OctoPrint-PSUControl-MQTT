@@ -77,7 +77,7 @@ class PSUControl_MQTT(octoprint.plugin.StartupPlugin,
     def turn_psu_on(self):
         self._logger.debug("Switching PSU On: sending command " + self.config["on_command"])
         self.mqtt_publish(self.config["control_topic"], self.config["on_command"])
-        if self.config["query_device_status"]:           
+        if self.config["query_device_status"]:
             self.mqtt_publish(self.config["query_topic"], self.config["query_payload"])
 
     def turn_psu_off(self):
@@ -92,15 +92,17 @@ class PSUControl_MQTT(octoprint.plugin.StartupPlugin,
             message_parsed = self.parse_message(message)
             self._logger.debug("parsed incoming message to value " + str(message_parsed))
 
-            if message_parsed.lower() == self.response_on.lower():
+            if message_parsed is None:  # None case must be caught first
+                self._logger.error("Received message but could not get value. Assuming same PSU state as before")
+            elif message_parsed.lower() == self.response_on.lower():
                 self._logger.debug("received valid state for ON")
                 self.psu_status = True
             elif message_parsed.lower() == self.response_off.lower():
                 self.psu_status = False
                 self._logger.info("received valid state for OFF")
             else:
-                self._logger.debug("Valid messages are " + self.response_on + " and " + self.response_off)
                 self._logger.debug("Received unknown message. Assuming same PSU state as before")
+                self._logger.debug("Valid messages are " + self.response_on + " and " + self.response_off)
 
     def parse_response_settings(self):
         a = 0
