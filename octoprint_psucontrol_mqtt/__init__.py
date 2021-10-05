@@ -36,14 +36,10 @@ class PSUControl_MQTT(octoprint.plugin.StartupPlugin,
 
     def reload_settings(self):
         for k, v in self.get_settings_defaults().items():
-            if type(v) == str:
-                v = self._settings.get([k])
-            elif type(v) == int:
-                v = self._settings.get_int([k])
-            elif type(v) == float:
-                v = self._settings.get_float([k])
-            elif type(v) == bool:
+            if type(v) == bool:
                 v = self._settings.get_boolean([k])
+            else:
+                v = self._settings.get([k])
 
             self.config[k] = v
             self._logger.debug("{}: {}".format(k, v))
@@ -90,11 +86,9 @@ class PSUControl_MQTT(octoprint.plugin.StartupPlugin,
         if topic == self.config["state_topic"]:
             self._logger.debug("received raw message: {message}".format(**locals()))
             message_parsed = self.parse_message(message)
-            self._logger.debug("parsed incoming message to value " + str(message_parsed))
+            self._logger.debug("parsed incoming message to value: {message_parsed}".format(**locals()))
 
-            if message_parsed is None:  # None case must be caught first
-                self._logger.error("Received message but could not get value. Assuming same PSU state as before")
-            elif message_parsed.lower() == self.response_on.lower():
+            if message_parsed.lower() == self.response_on.lower():
                 self._logger.debug("received valid state for ON")
                 self.psu_status = True
             elif message_parsed.lower() == self.response_off.lower():
@@ -102,25 +96,25 @@ class PSUControl_MQTT(octoprint.plugin.StartupPlugin,
                 self._logger.info("received valid state for OFF")
             else:
                 self._logger.debug("Received unknown message. Assuming same PSU state as before")
-                self._logger.debug("Valid messages are " + self.response_on + " and " + self.response_off)
+                self._logger.debug("Valid messages are {self.response_on} and {self.response_off}".format(**locals()))
 
     def parse_response_settings(self):
         a = 0
         response_keys = [None, None]
         try:
             response_on_dict = json.loads(self.config["response_on"])
-            self.response_on = list(response_on_dict.values())[0]
+            self.response_on = str(list(response_on_dict.values())[0])
             response_keys[0] = list(response_on_dict.keys())[0]
             a += 1
-        except ValueError:
-            self.response_on = self.config["response_on"]
+        except (ValueError, AttributeError, TypeError):
+            self.response_on = str(self.config["response_on"])
         try:
             response_off_dict = json.loads(self.config["response_off"])
-            self.response_off = list(response_off_dict.values())[0]
+            self.response_off = str(list(response_off_dict.values())[0])
             response_keys[1] = list(response_off_dict.keys())[0]
             a += 1
-        except ValueError:
-            self.response_off = self.config["response_off"]
+        except (ValueError, AttributeError, TypeError):
+            self.response_off = str(self.config["response_off"])
 
         if a == 2:
             self.response_key = response_keys[0]
@@ -142,7 +136,7 @@ class PSUControl_MQTT(octoprint.plugin.StartupPlugin,
         message = message.decode("utf-8")
         try:
             message_dict = dict(json.loads(message))
-        except ValueError:
+        except (ValueError, TypeError):
             message_parsed = message  # message was no json, keep as is
             if self.response_key is not None:
                 self._logger.error("Response settings are json but incoming message is not..Should still work")
@@ -150,7 +144,7 @@ class PSUControl_MQTT(octoprint.plugin.StartupPlugin,
             message_parsed = message_dict.get(self.response_key)  # message is json, get value we are looking for
             if self.response_key is None:
                 self._logger.error("Incoming message is json but response settings are not..Fix or this won't work")
-        return message_parsed
+        return str(message_parsed)
 
     def get_psu_state(self):
         if self.config["query_device_status"]:
