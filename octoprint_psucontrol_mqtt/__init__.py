@@ -77,10 +77,14 @@ class PSUControl_MQTT(octoprint.plugin.StartupPlugin,
     def turn_psu_on(self):
         self._logger.debug("Switching PSU On: sending command " + self.config["on_command"])
         self.mqtt_publish(self.config["control_topic"], self.config["on_command"])
+        if self.config["query_device_status"]:           
+            self.mqtt_publish(self.config["query_topic"], self.config["query_payload"])
 
     def turn_psu_off(self):
         self._logger.debug("Switching PSU Off: sending command " + self.config["off_command"])
         self.mqtt_publish(self.config["control_topic"], self.config["off_command"])
+        if self.config["query_device_status"]:
+            self.mqtt_publish(self.config["query_topic"], self.config["query_payload"])
 
     def on_mqtt_subscription(self, topic, message, retained=None, qos=None, *args, **kwargs):
         if topic == self.config["state_topic"]:
@@ -106,32 +110,29 @@ class PSUControl_MQTT(octoprint.plugin.StartupPlugin,
             self.response_on = list(response_on_dict.values())[0]
             response_keys[0] = list(response_on_dict.keys())[0]
             a += 1
-        except:
+        except ValueError:
             self.response_on = self.config["response_on"]
         try:
             response_off_dict = json.loads(self.config["response_off"])
             self.response_off = list(response_off_dict.values())[0]
             response_keys[1] = list(response_off_dict.keys())[0]
             a += 1
-        except:
+        except ValueError:
             self.response_off = self.config["response_off"]
 
         if a == 2:
             self.response_key = response_keys[0]
             if response_keys[0] != response_keys[1]:
                 self._logger.error("Response message settings have different json keys..50/50 chance")
-
-        if a == 1:
+        elif a == 1:
             self._logger.error("Response message settings have mix of json and str..Should still work")
             for val in response_keys:
                 if val is not None:
                     self.response_key = val
-
-        if a == 0:  # this is redundant but I like it
+        else:  # a==0
             self.response_key = None
-            self.response_on = self.config["response_on"]
-            self.response_off = self.config["response_off"]
-            # if responses are not json but simple strings
+            # self.response_on = self.config["response_on"]
+            # self.response_off = self.config["response_off"]
 
         self._logger.debug("response json key is " + str(self.response_key))
 
@@ -139,7 +140,7 @@ class PSUControl_MQTT(octoprint.plugin.StartupPlugin,
         message = message.decode("utf-8")
         try:
             message_dict = dict(json.loads(message))
-        except:
+        except ValueError:
             message_parsed = message  # message was no json, keep as is
             if self.response_key is not None:
                 self._logger.error("Response settings are json but incoming message is not..Should still work")
