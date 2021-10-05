@@ -5,7 +5,7 @@
 plugin_identifier = "psucontrol_mqtt"
 plugin_package = "octoprint_%s" % plugin_identifier
 plugin_name = "PSU Control - MQTT"
-plugin_version = "1.0"
+plugin_version = "1.0.1"
 plugin_description = "Control external MQTT switch with PSU Control"
 plugin_author = "oerkel47"
 plugin_author_email = ""
