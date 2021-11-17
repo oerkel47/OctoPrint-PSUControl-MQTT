@@ -68,7 +68,7 @@ class PSUControl_MQTT(octoprint.plugin.StartupPlugin,
         self.parse_response_settings()
 
         try:
-            self.mqtt_subscribe(self.config["state_topic"], self.on_mqtt_subscription)
+            self.mqtt_subscribe(self.config["state_topic"], self._on_mqtt_subscription)
             self._logger.debug("subscribing to: " + self.config["state_topic"])
         except ValueError:
             self._logger.error("State topic not set or invalid")
@@ -168,7 +168,7 @@ class PSUControl_MQTT(octoprint.plugin.StartupPlugin,
         self._logger.debug("unsubscribing from: " + self.config["state_topic"])
         self.reload_settings()
         try:
-            self.mqtt_subscribe(self.config["state_topic"], self.on_mqtt_subscription)
+            self.mqtt_subscribe(self.config["state_topic"], self._on_mqtt_subscription)
             self._logger.debug("subscribing to: " + self.config["state_topic"])
         except ValueError:
             self._logger.error("State topic not set or invalid")        
