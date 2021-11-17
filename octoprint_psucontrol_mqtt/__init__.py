@@ -4,7 +4,6 @@ from __future__ import absolute_import
 import octoprint.plugin
 import json
 
-
 class PSUControl_MQTT(octoprint.plugin.StartupPlugin,
                       octoprint.plugin.RestartNeedingPlugin,
                       octoprint.plugin.TemplatePlugin,
@@ -105,7 +104,6 @@ class PSUControl_MQTT(octoprint.plugin.StartupPlugin,
                 self._logger.debug("Valid messages are {self.response_on} and {self.response_off}".format(**locals()))
 
     def parse_response_settings(self):
-
         if str(self.config["response_on"]) == "" or str(self.config["response_off"]) == "":
             self._logger.error("Response settings (partly) empty. Aborting")
             return
