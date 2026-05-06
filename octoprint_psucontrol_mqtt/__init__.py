@@ -9,7 +9,7 @@ class PSUControl_MQTT(octoprint.plugin.StartupPlugin,
                       octoprint.plugin.RestartNeedingPlugin,
                       octoprint.plugin.TemplatePlugin,
                       octoprint.plugin.SettingsPlugin):
-
+    
     def __init__(self):
         self.mqtt_publish = lambda *args, **kwargs: None
         self.mqtt_subscribe = lambda *args, **kwargs: None
@@ -43,7 +43,13 @@ class PSUControl_MQTT(octoprint.plugin.StartupPlugin,
 
             self.config[k] = v
             self._logger.debug("{}: {}".format(k, v))
-
+    
+    def is_template_autoescaped(self):
+        return True
+    
+    def is_api_protected(self):
+        return True
+    
     def on_after_startup(self):
         self.reload_settings()
         psucontrol_helpers = self._plugin_manager.get_helpers("psucontrol")
@@ -105,7 +111,6 @@ class PSUControl_MQTT(octoprint.plugin.StartupPlugin,
                 self._logger.debug("Valid messages are {self.response_on} and {self.response_off}".format(**locals()))
 
     def parse_response_settings(self):
-
         if str(self.config["response_on"]) == "" or str(self.config["response_off"]) == "":
             self._logger.error("Response settings (partly) empty. Aborting")
             return
